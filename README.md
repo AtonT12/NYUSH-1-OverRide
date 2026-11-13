@@ -2,10 +2,11 @@
 
 VEX V5 C++ competition program for the 2026–2027 VEX U Override Small Robot.
 
-> **Current status:** architecture and safety scaffold. All 13 motor bindings are
-> intentionally empty because no Smart Port map or per-motor direction data has
-> been confirmed. The robot will not drive or move any mechanism in this state.
-> No autonomous routine or X-drive mixing formula is implemented yet.
+> **Current status:** all 13 motors are bound to their confirmed Smart Ports with
+> per-motor direction normalization. The competition program still does not
+> command the drivetrain or mechanisms in teleop, because the full X-drive mixing
+> convention and operator button map are not yet validated. No autonomous routine
+> is implemented.
 
 ## Robot configuration
 
@@ -16,6 +17,7 @@ VEX V5 C++ competition program for the 2026–2027 VEX U Override Small Robot.
 | Maximum starting size | 15 × 15 × 15 in |
 | Brain | VEX V5 Brain |
 | Controller | VEX V5 Controller |
+| Robot orientation | Claw side = front; Toggle side = rear |
 | Drivetrain | 8-motor Omni X-Drive |
 | Drivetrain layout | Four Omni wheels; two motors per wheel through a gear transmission |
 | Toggle | 1 V5 Smart Motor |
@@ -25,8 +27,10 @@ VEX V5 C++ competition program for the 2026–2027 VEX U Override Small Robot.
 | Total motors | 13 |
 
 This is a conventional four-wheel Omni X-drive, **not** a Mecanum drivetrain.
-The drivetrain motor pairs must not be assumed to share the same mechanical
-direction. Each motor needs its own reverse setting after physical verification.
+Every drive motor has its own confirmed reverse setting. The current code
+normalizes each wheel group so a positive Drivetrain command drives that wheel
+forward; this is a hardware-level convention, not yet the final chassis mixing
+formula.
 
 The starting-size limit is a mechanical compliance requirement. Software does
 not enforce it, and satisfying it does not waive any other VEX U expansion or
@@ -47,27 +51,20 @@ following or a third-party library.
 ### macOS Apple Silicon note
 
 The installed VEX toolchain binaries (`clang`, `make`, `arm-none-eabi-*`) are
-x86_64. On this arm64 Mac, Rosetta is not installed, so the VEX toolchain cannot
-execute. The VEX extension's build path also contains an explicit Rosetta
-prerequisite check. A full build and link require either:
-
-- installing Rosetta for this toolchain, or
-- using a macOS/Windows build host with a working VEX toolchain.
-
-Do not claim a successful full build until that environment issue is resolved.
+x86_64. This arm64 Mac now has Rosetta installed, and the toolchain executes.
+On another Apple Silicon build host without Rosetta, install it before using the
+VEX build command.
 
 ### Verification status (2026-11-13)
 
-- All nine C++ translation units and every project header passed a syntax check
-  against the installed VEX SDK headers using the host `clang++` with the VEX
-  target flags.
-- Each source also compiled to an ARM ELF object in a temporary directory.
-- The project's own VEX makefile was attempted. It stopped at the first source
-  with `Bad CPU type in executable` because the bundled x86_64 `clang` cannot
-  run on this arm64 host without Rosetta.
-- Therefore the official link, `.bin` generation, download and hardware test
-  have **not** been performed. The temporary ARM objects are a partial
-  verification only.
+- A clean official VEX build was run with the bundled VEX makefile, compiler and
+  linker. All nine translation units compiled, linked and produced
+  `build/NYUSH-1.bin`.
+- All project headers also passed independent syntax checks against the VEX SDK
+  headers. The earlier host-`clang++` object compilation passed as a supplementary
+  check.
+- No program has been downloaded to a physical Brain, and no hardware motion test
+  has been performed.
 
 ## Directory structure
 
@@ -76,7 +73,7 @@ NYUSH-1/
 ├── include/
 │   ├── vex.h                 # Unchanged VEX template wrapper header
 │   ├── constants.h           # Loop period, deadband, output limits
-│   ├── robot-config.h        # Brain, Controller and 13 motor binding slots
+│   ├── robot-config.h        # Brain, Controller and 13 motor bindings
 │   ├── motor-control.h       # Null-safe motor helpers
 │   ├── drivetrain.h          # Wheel-group hardware interface
 │   ├── toggle.h              # Toggle mechanism interface
@@ -86,7 +83,7 @@ NYUSH-1/
 │   └── autonomous.h          # Autonomous entry point
 ├── src/
 │   ├── main.cpp              # Competition callbacks and teleop loop
-│   ├── robot-config.cpp      # Central device bindings and readiness checks
+│   ├── robot-config.cpp      # Confirmed ports, directions and readiness checks
 │   ├── motor-control.cpp     # Deadband, limiting, spin/stop helpers
 │   ├── drivetrain.cpp        # Low-level four-wheel-group output layer
 │   ├── toggle.cpp            # Toggle implementation
@@ -107,7 +104,7 @@ No makefile change is needed when these files are added.
 
 | Module | Responsibility |
 | --- | --- |
-| `robot-config` | Single place for Brain, Controller and all future motor bindings; readiness checks; global stop |
+| `robot-config` | Single place for Brain, Controller and all 13 motor bindings; direction normalization; readiness checks; global stop |
 | `motor-control` | Shared deadband, magnitude limit, signed percent command and null-safe stop |
 | `drivetrain` | Four logical wheel groups, encoder reset and low-level wheel power; intentionally no X-drive mixing yet |
 | `toggle` | Field Toggle motor power and stop |
@@ -125,8 +122,9 @@ cyclic includes.
 ### Pre-autonomous
 
 - Stops every bound motor.
-- Resets drivetrain motor encoders only if all eight drivetrain motors are
-  bound. The current bindings are empty, so this is a no-op.
+- Resets all eight drivetrain motor encoders to zero after verifying the
+  drivetrain binding is complete. This is a position reset only; it does not move
+  the robot and assumes the robot is at rest.
 - Shows project, hardware-binding and autonomous status on the Brain screen.
 - Does not perform fictional IMU, gyro or sensor calibration.
 
@@ -144,8 +142,9 @@ cyclic includes.
 - Reads the forward axis (`Controller.Axis3`) and turn axis (`Controller.Axis1`)
   every 20 ms through the configured deadband.
 - Displays the received values on the Brain for controller-path debugging.
-- Does **not** command the drivetrain because the X-drive geometry and motor
-  directions are unverified.
+- Does **not** command the drivetrain because the complete X-drive wheel-axis
+  mixing convention is not yet validated. Per-motor directions are confirmed and
+  normalized.
 - Does not yet map controller buttons to mechanisms.
 
 ### Stopping behavior
@@ -154,60 +153,58 @@ All module stop paths use `vex::brakeType::brake` as the first-version default.
 Mechanism-specific `hold`/`coast` behavior remains to be selected after the
 mechanical team characterizes each axis.
 
-## Hardware binding policy
+## Confirmed hardware bindings
 
-`src/robot-config.cpp` currently binds all motors as follows:
+All 13 motor objects are declared once in `src/robot-config.cpp` and exposed
+through the centralized `RobotHardware` bindings. The reverse flag is applied to
+the motor object, not hidden inside a mechanism module.
 
-```cpp
-RobotHardware::driveFrontLeft = {nullptr, nullptr};
-// ... three more drivetrain pairs, primary lift pair, three single motors
-```
+| Logical motor | Binding | Port | Native positive | Reverse flag | Logical positive |
+| --- | --- | --- | --- | --- | --- |
+| Drive FL A | `driveFrontLeft.motorA` | 1 | backward | Yes | wheel forward |
+| Drive FL B | `driveFrontLeft.motorB` | 2 | backward | Yes | wheel forward |
+| Drive FR A | `driveFrontRight.motorA` | 4 | forward | No | wheel forward |
+| Drive FR B | `driveFrontRight.motorB` | 14 | forward | No | wheel forward |
+| Drive RL A | `driveRearLeft.motorA` | 7 | backward | Yes | wheel forward |
+| Drive RL B | `driveRearLeft.motorB` | 8 | backward | Yes | wheel forward |
+| Drive RR A | `driveRearRight.motorA` | 3 | forward | No | wheel forward |
+| Drive RR B | `driveRearRight.motorB` | 19 | forward | No | wheel forward |
+| Toggle | `toggleMotor` | 13 | upward | No | upward |
+| Primary lift A | `primaryLift.motorA` | 9 | raise | No | raise |
+| Primary lift B | `primaryLift.motorB` | 10 | lower | Yes | raise |
+| Secondary lift | `secondaryLiftMotor` | 5 | raise | No | raise |
+| Claw | `clawMotor` | 6 | close | No | close |
 
-`nullptr` means **unassigned hardware**, not a valid port or a simulated motor.
-Do not replace it with a guessed `PORTx` value.
+Direction normalization notes:
 
-When the port map is confirmed:
+- FL and RL are reverse-normalized because their native positive direction is
+  backward. FR and RR are not reversed. Positive Drivetrain power therefore
+  means "wheel forward" for every group after normalization.
+- Primary Lift B is reverse-normalized because its native positive direction
+  lowers the assembly. Positive VerticalLift power therefore raises both sides
+  together.
+- Toggle, Secondary Lift and Claw already have native positive directions that
+  match their module conventions.
+- Motor cartridges are still not encoded. The motors use the two-argument
+  constructor (port + reverse), and all current commands are percent-based; no
+  RPM, wheel-distance or gear-ratio conversion is performed.
+- The modules still require complete two-motor pairs. If a binding is later
+  removed or only one side is available, the subsystem refuses to move while
+  `stopAllMotors()` can still stop the remaining motor.
 
-1. Declare each motor once in `src/robot-config.cpp` with its confirmed port,
-   cartridge and independent reverse setting.
-2. Point the corresponding `RobotHardware` binding at the declared motor.
-3. Keep all device declarations centralized; do not declare motors in module
-   source files.
-4. Verify each drivetrain wheel direction at low speed before adding any mixing.
-5. Verify each mechanism's positive direction and safe travel before enabling
-   operator controls.
-
-The modules require a complete pair for two-motor subsystems. If only one lift
-or drivetrain motor is bound, that subsystem reports not ready and refuses to
-command either motor, while `stopAllMotors()` can still stop any bound motor.
+This normalization is not the final X-drive mixing formula. Do not connect wheel
+commands directly to the operator joystick until the complete wheel-axis sign
+convention has been tested.
 
 ## Hardware information still required
 
-Fill this table before connecting any power or running motion tests.
-
-| Logical device | Binding field | Smart Port | Cartridge | Reverse | Notes |
-| --- | --- | --- | --- | --- | --- |
-| Drive FL motor A | `driveFrontLeft.motorA` | TBD | TBD | TBD | 2-motor gear-driven wheel |
-| Drive FL motor B | `driveFrontLeft.motorB` | TBD | TBD | TBD | Verify independently |
-| Drive FR motor A | `driveFrontRight.motorA` | TBD | TBD | TBD | 2-motor gear-driven wheel |
-| Drive FR motor B | `driveFrontRight.motorB` | TBD | TBD | TBD | Verify independently |
-| Drive RL motor A | `driveRearLeft.motorA` | TBD | TBD | TBD | 2-motor gear-driven wheel |
-| Drive RL motor B | `driveRearLeft.motorB` | TBD | TBD | TBD | Verify independently |
-| Drive RR motor A | `driveRearRight.motorA` | TBD | TBD | TBD | 2-motor gear-driven wheel |
-| Drive RR motor B | `driveRearRight.motorB` | TBD | TBD | TBD | Verify independently |
-| Toggle | `toggleMotor` | TBD | TBD | TBD | |
-| Primary lift A | `primaryLift.motorA` | TBD | TBD | TBD | Coupled to lift B |
-| Primary lift B | `primaryLift.motorB` | TBD | TBD | TBD | Verify independently |
-| Secondary lift | `secondaryLiftMotor` | TBD | TBD | TBD | Articulated lift |
-| Claw | `clawMotor` | TBD | TBD | TBD | Pin gripper |
-
-Also required:
-
+- Cartridge type for all 13 motors.
 - Gear tooth counts and gear ratio for each wheel group.
-- Wheel diameter and exact wheel mounting orientation.
+- Wheel diameter and exact wheel mounting/axis convention for X-drive mixing.
 - Allowed lift travel/angle and safe speed limits.
 - Mechanism stop/hold requirements.
 - Operator button mapping.
+- Autonomous starting positions and strategy.
 
 ## Build and download
 
@@ -230,8 +227,8 @@ PATH="$TOOLCHAIN/gcc/bin:$TOOLCHAIN/tools/bin:$TOOLCHAIN/clang/bin:$PATH" \
   make T="$SDK_HOME" P=NYUSH-1
 ```
 
-This command is the project's own VEX build flow, not a generic host build. On
-the current arm64 Mac it fails at the first compile until Rosetta is installed.
+This command is the project's own VEX build flow, not a generic host build. The
+current arm64 Mac has Rosetta installed and completed this build successfully.
 The generated `build/` directory is ignored by `.gitignore`.
 
 Do not download or run the program on a physical Brain without explicit user
@@ -239,11 +236,13 @@ authorization and a safe mechanical test setup.
 
 ## Next development steps
 
-1. Record the confirmed 13-port map, cartridge, and independent reverse flag for
-   every motor.
-2. Bind the motors in `robot-config.cpp` and verify readiness/stop behavior.
-3. Verify each drivetrain wheel group at low speed, then implement one mixing
-   axis at a time: forward/reverse, strafe, rotation, then diagonal.
+1. Download to the Brain (only when explicitly authorized and physically safe),
+   verify it boots to pre-auton, reports `HW bindings: ready`, and shows no
+   motor movement while the field is disabled.
+2. Bench-test each drive wheel group at very low power, one group at a time, and
+   confirm the normalized positive direction.
+3. Implement one chassis mixing axis at a time after direction testing:
+   forward/reverse, strafe, rotation, then diagonal.
 4. Add operator bindings for Toggle, Primary Lift, Secondary Lift and Claw only
    after safe direction and travel limits are known.
 5. Add encoder-based movement helpers for mechanisms with verified limits.

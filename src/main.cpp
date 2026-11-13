@@ -41,7 +41,7 @@ void showRobotStatus() {
   }
 
   Brain.Screen.setCursor(4, 1);
-  Brain.Screen.print("Drive output: disabled");
+  Brain.Screen.print("Drive mixer: pending");
   Brain.Screen.setCursor(5, 1);
   Brain.Screen.print("Auton: no routine");
 }
@@ -62,7 +62,7 @@ void pre_auton(void) {
   stopAllActuators();
 
   // Encoder zeroing is safe only when the drivetrain is fully bound and at
-  // rest. The module itself skips this while the bindings are empty.
+  // rest. The module checks readiness before touching the motors.
   Drivetrain::resetEncoders();
 
   showRobotStatus();
@@ -95,21 +95,32 @@ void usercontrol(void) {
   int displayCycle = 0;
 
   while (1) {
+    // Once driver control ends, exit so the cleanup below can run instead of
+    // leaving the last command state in place after a field disable.
+    if (!Competition.isDriverControl()) {
+      break;
+    }
+
     const int forward = MotorControl::applyDeadband(
         Controller.Axis3.position(), RobotConstants::kJoystickDeadband);
     const int turn = MotorControl::applyDeadband(
         Controller.Axis1.position(), RobotConstants::kJoystickDeadband);
 
     // Show that the controller path is alive, but do not command the chassis.
-    // The final X-drive mixing formula must wait for confirmed wheel mounting,
-    // motor directions and a tested direction convention.
+    // Motor directions are normalized per group, but the final X-drive
+    // wheel-axis convention still needs a supervised bench test.
     if (++displayCycle >= 10) {
       displayCycle = 0;
-      Brain.Screen.printAt(10, 230, "Input F:%4d T:%4d", forward, turn);
+      // y=210 is inside the V5 Brain's 480x272 screen and leaves room for one
+      // full line of default-size text below the status.
+      Brain.Screen.printAt(10, 210, "Input F:%4d T:%4d", forward, turn);
     }
 
     wait(RobotConstants::kControlLoopPeriodMs, msec);
   }
+
+  // Cleanup path for leaving driver control: stop every bound motor.
+  stopAllActuators();
 }
 
 //

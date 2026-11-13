@@ -6,13 +6,12 @@
 extern vex::brain Brain;
 extern vex::controller Controller;
 
-// Central hardware binding seam.
+// Central hardware bindings.
 //
-// The confirmed robot has 13 motors, but no Smart Port map, cartridge map or
-// per-motor direction data has been supplied. Do not replace these null
-// bindings with guessed values. Once the physical configuration is verified,
-// declare the motor objects in robot-config.cpp (using the confirmed cartridge
-// and an independent reverse flag per motor) and point these bindings at them.
+// Robot convention: the Claw side is the front; the Toggle side is the rear.
+// The confirmed Smart Ports and per-motor reverse flags are declared in
+// robot-config.cpp. Cartridges remain unconfirmed, so the modules use percent
+// power only and do not perform RPM or physical-distance conversions.
 namespace RobotHardware {
 
 struct MotorPair {
@@ -21,14 +20,15 @@ struct MotorPair {
 };
 
 // Four Omni X-drive wheel groups. Each wheel is driven by two motors through a
-// gear transmission; the two motors are configured independently so opposite
-// mounting directions can be corrected without changing module code.
+// gear transmission. Direction is normalized per motor in robot-config.cpp so a
+// positive Drivetrain command drives its wheel group forward.
 extern MotorPair driveFrontLeft;
 extern MotorPair driveFrontRight;
 extern MotorPair driveRearLeft;
 extern MotorPair driveRearRight;
 
-// Primary vertical lift: two motors treated as one logical subsystem.
+// Primary vertical lift: two motors treated as one logical subsystem. Direction
+// is normalized so positive VerticalLift power raises the assembly.
 extern MotorPair primaryLift;
 
 // Single-motor mechanisms.
@@ -45,8 +45,8 @@ bool secondaryLiftReady();
 bool clawReady();
 bool allReady();
 
-// Stops every bound motor, including motors in partially configured pairs.
-// Safe to call when nothing is bound.
+// Stops every bound motor, including any partially configured pair. Safe to
+// call when no motor is bound.
 void stopAllMotors(vex::brakeType mode);
 
 }  // namespace RobotHardware

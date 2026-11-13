@@ -11,9 +11,10 @@ enum class Wheel {
 
 bool isReady();
 
-// Low-level wheel-group commands. These do not contain an X-drive mixing
-// formula and must not be connected directly to an operator joystick until the
-// physical wheel orientation and every motor direction have been verified.
+// Low-level wheel-group commands. Motor directions are normalized per group so
+// positive means "drive this wheel forward." These functions still do not
+// contain an X-drive mixing formula and must not be connected directly to an
+// operator joystick until the full wheel-axis sign convention is verified.
 void setWheelPower(Wheel wheel, double percent);
 void setWheelPowers(double frontLeft, double frontRight, double rearLeft,
                     double rearRight);
