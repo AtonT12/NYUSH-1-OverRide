@@ -6,16 +6,16 @@
 // This is intentionally not a PID or motion-profile implementation.
 namespace MotorControl {
 
-// Returns zero for inputs inside the deadband, otherwise preserves the
-// controller value (which is already in the -100..100 range).
+// Applies a deadband and linearly rescales the remaining controller range to
+// -100..100. Controller input values are expected to be within -100..100.
 int applyDeadband(int value, int deadband);
 
-// Symmetric magnitude limit. The sign is preserved.
+// Symmetric magnitude limit in the caller's units. The sign is preserved.
 double limitMagnitude(double value, double maxMagnitude);
 
-// Null-safe percent command. A null pointer is a valid "hardware not bound"
+// Null-safe RPM command. A null pointer is a valid "hardware not bound"
 // state. Near-zero commands stop the motor instead of issuing a zero spin.
-void spinPercent(vex::motor* motor, double percent);
+void spinRpm(vex::motor* motor, double rpm);
 
 // Null-safe stop with an explicit brake mode.
 void stopMotor(vex::motor* motor, vex::brakeType mode);

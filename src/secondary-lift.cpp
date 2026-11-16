@@ -10,14 +10,15 @@ bool isReady() {
   return RobotHardware::secondaryLiftReady();
 }
 
-void setPower(double percent) {
+void setRpm(double rpm) {
   if (!isReady()) {
+    stop();
     return;
   }
 
-  const double limited =
-      MotorControl::limitMagnitude(percent, RobotConstants::kMechanismMaxPercent);
-  MotorControl::spinPercent(RobotHardware::secondaryLiftMotor, limited);
+  const double limited = MotorControl::limitMagnitude(
+      rpm, RobotConstants::kMechanismMaxCommandRpm);
+  MotorControl::spinRpm(RobotHardware::secondaryLiftMotor, limited);
 }
 
 void stop() {

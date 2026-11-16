@@ -4,8 +4,8 @@ namespace Claw {
 
 bool isReady();
 
-// Positive power closes the gripper; negative power opens it.
-void setPower(double percent);
+// Positive RPM closes the gripper; negative RPM opens it.
+void setRpm(double rpm);
 void stop();
 
 }  // namespace Claw

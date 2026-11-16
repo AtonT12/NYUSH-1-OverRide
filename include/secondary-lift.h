@@ -4,8 +4,8 @@ namespace SecondaryLift {
 
 bool isReady();
 
-// Positive power raises the articulated lift.
-void setPower(double percent);
+// Positive RPM raises the articulated lift.
+void setRpm(double rpm);
 void stop();
 
 }  // namespace SecondaryLift

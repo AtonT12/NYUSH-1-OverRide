@@ -10,10 +10,13 @@
 #include "vex.h"
 
 #include "autonomous.h"
+#include "claw.h"
 #include "constants.h"
 #include "drivetrain.h"
 #include "motor-control.h"
 #include "robot-config.h"
+#include "toggle.h"
+#include "vertical-lift.h"
 
 using namespace vex;
 
@@ -41,8 +44,14 @@ void showRobotStatus() {
   }
 
   Brain.Screen.setCursor(4, 1);
-  Brain.Screen.print("Drive mixer: pending");
+  Brain.Screen.print("X-drive mixer: RPM");
   Brain.Screen.setCursor(5, 1);
+  if (RobotConstants::kDriverActuationEnabled) {
+    Brain.Screen.print("Driver output: enabled");
+  } else {
+    Brain.Screen.print("Driver output: locked");
+  }
+  Brain.Screen.setCursor(6, 1);
   Brain.Screen.print("Auton: no routine");
 }
 
@@ -103,17 +112,43 @@ void usercontrol(void) {
 
     const int forward = MotorControl::applyDeadband(
         Controller.Axis3.position(), RobotConstants::kJoystickDeadband);
+    const int strafe = MotorControl::applyDeadband(
+        Controller.Axis4.position(), RobotConstants::kJoystickDeadband);
     const int turn = MotorControl::applyDeadband(
         Controller.Axis1.position(), RobotConstants::kJoystickDeadband);
 
-    // Show that the controller path is alive, but do not command the chassis.
-    // Motor directions are normalized per group, but the final X-drive
-    // wheel-axis convention still needs a supervised bench test.
+    if (RobotConstants::kDriverActuationEnabled) {
+      Drivetrain::driveX(forward, strafe, turn);
+
+      if (Controller.ButtonL1.pressing()) {
+        VerticalLift::setRpm(RobotConstants::kPrimaryLiftRpm);
+      } else if (Controller.ButtonL2.pressing()) {
+        VerticalLift::setRpm(-RobotConstants::kPrimaryLiftRpm);
+      } else {
+        VerticalLift::stop();
+      }
+
+      if (Controller.ButtonR1.pressing()) {
+        Claw::setRpm(RobotConstants::kClawRpm);
+      } else if (Controller.ButtonR2.pressing()) {
+        Claw::setRpm(-RobotConstants::kClawRpm);
+      } else {
+        Claw::stop();
+      }
+
+      if (Controller.ButtonA.pressing() || Controller.ButtonX.pressing()) {
+        Toggle::setRpm(RobotConstants::kToggleRpm);
+      } else {
+        Toggle::stop();
+      }
+    }
+
     if (++displayCycle >= 10) {
       displayCycle = 0;
-      // y=210 is inside the V5 Brain's 480x272 screen and leaves room for one
-      // full line of default-size text below the status.
-      Brain.Screen.printAt(10, 210, "Input F:%4d T:%4d", forward, turn);
+      Brain.Screen.printAt(10, 210, "F:%4d S:%4d T:%4d %s", forward, strafe,
+                           turn, RobotConstants::kDriverActuationEnabled
+                                     ? "ON"
+                                     : "LOCKED");
     }
 
     wait(RobotConstants::kControlLoopPeriodMs, msec);

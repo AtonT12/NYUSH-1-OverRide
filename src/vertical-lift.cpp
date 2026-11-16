@@ -10,15 +10,17 @@ bool isReady() {
   return RobotHardware::primaryLiftReady();
 }
 
-void setPower(double percent) {
+void setRpm(double rpm) {
   if (!isReady()) {
+    // Never leave the surviving motor running on a half-bound pair.
+    stop();
     return;
   }
 
-  const double limited =
-      MotorControl::limitMagnitude(percent, RobotConstants::kMechanismMaxPercent);
-  MotorControl::spinPercent(RobotHardware::primaryLift.motorA, limited);
-  MotorControl::spinPercent(RobotHardware::primaryLift.motorB, limited);
+  const double limited = MotorControl::limitMagnitude(
+      rpm, RobotConstants::kMechanismMaxCommandRpm);
+  MotorControl::spinRpm(RobotHardware::primaryLift.motorA, limited);
+  MotorControl::spinRpm(RobotHardware::primaryLift.motorB, limited);
 }
 
 void stop() {

@@ -11,13 +11,14 @@ enum class Wheel {
 
 bool isReady();
 
-// Low-level wheel-group commands. Motor directions are normalized per group so
-// positive means "drive this wheel forward." These functions still do not
-// contain an X-drive mixing formula and must not be connected directly to an
-// operator joystick until the full wheel-axis sign convention is verified.
-void setWheelPower(Wheel wheel, double percent);
-void setWheelPowers(double frontLeft, double frontRight, double rearLeft,
-                    double rearRight);
+// Low-level wheel-group commands in RPM. Motor directions are normalized per
+// group so positive means "drive this wheel forward."
+void setWheelRpm(Wheel wheel, double rpm);
+void setWheelRpms(double frontLeft, double frontRight, double rearLeft,
+                  double rearRight);
+
+// X-drive mixing for deadbanded controller axes in the -100..100 range.
+void driveX(double forwardAxis, double strafeAxis, double turnAxis);
 
 // Stops all bound drivetrain motors with brake mode.
 void stop();

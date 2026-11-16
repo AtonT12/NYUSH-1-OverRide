@@ -8,42 +8,43 @@ vex::controller Controller;
 
 namespace {
 
-// Confirmed port and direction map.
+// Port map and current motor-direction assumptions.
 //
 // Robot convention: the Claw is the front, the Toggle is the rear. Each drive
 // group is normalized so a positive module command drives that wheel forward.
-// Native-positive directions were supplied by the hardware owner; the reverse
-// flag is set independently for every motor where that direction is opposite.
+// Native-positive directions were supplied in the original hardware notes.
+// The Python reference has opposite flags for all drive motors, so those
+// directions still require a supervised physical check.
 //
-// Cartridges are not encoded here because they are still unknown. All current
-// module commands use percent power, not RPM or physical distance conversions.
+// Internal V5 gear cartridges follow the hardware configuration in the Python
+// reference: 6:1 for drive motors and 18:1 for mechanisms.
 
 // FL native positive = backward -> invert to make positive = forward.
-vex::motor driveFrontLeftAMotor(vex::PORT1, true);
-vex::motor driveFrontLeftBMotor(vex::PORT2, true);
+vex::motor driveFrontLeftAMotor(vex::PORT1, vex::ratio6_1, true);
+vex::motor driveFrontLeftBMotor(vex::PORT2, vex::ratio6_1, true);
 
 // FR native positive = forward.
-vex::motor driveFrontRightAMotor(vex::PORT4, false);
-vex::motor driveFrontRightBMotor(vex::PORT14, false);
+vex::motor driveFrontRightAMotor(vex::PORT4, vex::ratio6_1, false);
+vex::motor driveFrontRightBMotor(vex::PORT14, vex::ratio6_1, false);
 
 // RL native positive = backward -> invert to make positive = forward.
-vex::motor driveRearLeftAMotor(vex::PORT7, true);
-vex::motor driveRearLeftBMotor(vex::PORT8, true);
+vex::motor driveRearLeftAMotor(vex::PORT7, vex::ratio6_1, true);
+vex::motor driveRearLeftBMotor(vex::PORT8, vex::ratio6_1, true);
 
 // RR native positive = forward.
-vex::motor driveRearRightAMotor(vex::PORT3, false);
-vex::motor driveRearRightBMotor(vex::PORT19, false);
+vex::motor driveRearRightAMotor(vex::PORT3, vex::ratio6_1, false);
+vex::motor driveRearRightBMotor(vex::PORT19, vex::ratio6_1, false);
 
 // Lift A native positive = raise. Lift B native positive = lower, so invert B
 // to make positive command = raise for the complete subsystem.
-vex::motor primaryLiftAMotor(vex::PORT9, false);
-vex::motor primaryLiftBMotor(vex::PORT10, true);
+vex::motor primaryLiftAMotor(vex::PORT9, vex::ratio18_1, false);
+vex::motor primaryLiftBMotor(vex::PORT10, vex::ratio18_1, true);
 
 // Single-motor mechanisms. Their native positive directions already match the
 // module conventions: Toggle up, Secondary Lift raise, Claw close.
-vex::motor toggleMechanismMotor(vex::PORT13, false);
-vex::motor secondaryLiftMechanismMotor(vex::PORT5, false);
-vex::motor clawMechanismMotor(vex::PORT6, false);
+vex::motor toggleMechanismMotor(vex::PORT13, vex::ratio18_1, false);
+vex::motor secondaryLiftMechanismMotor(vex::PORT5, vex::ratio18_1, false);
+vex::motor clawMechanismMotor(vex::PORT6, vex::ratio18_1, false);
 
 }  // namespace
 
@@ -61,8 +62,16 @@ vex::motor* clawMotor = &clawMechanismMotor;
 
 namespace {
 
+// A motor counts as ready only when the pointer is bound (guards code edits)
+// and the device actually answers on its Smart Port. Without installed() this
+// check only proves that the source code declared a motor object, which is
+// always true and would report "ready" with the whole robot unplugged.
+bool motorReady(vex::motor* motor) {
+  return motor != nullptr && motor->installed();
+}
+
 bool pairReady(const MotorPair& pair) {
-  return pair.motorA != nullptr && pair.motorB != nullptr;
+  return motorReady(pair.motorA) && motorReady(pair.motorB);
 }
 
 void stopPair(const MotorPair& pair, vex::brakeType mode) {
@@ -78,7 +87,7 @@ bool drivetrainReady() {
 }
 
 bool toggleReady() {
-  return toggleMotor != nullptr;
+  return motorReady(toggleMotor);
 }
 
 bool primaryLiftReady() {
@@ -86,11 +95,11 @@ bool primaryLiftReady() {
 }
 
 bool secondaryLiftReady() {
-  return secondaryLiftMotor != nullptr;
+  return motorReady(secondaryLiftMotor);
 }
 
 bool clawReady() {
-  return clawMotor != nullptr;
+  return motorReady(clawMotor);
 }
 
 bool allReady() {

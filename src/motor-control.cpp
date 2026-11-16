@@ -8,12 +8,18 @@ int applyDeadband(int value, int deadband) {
   if (deadband < 0) {
     deadband = 0;
   }
-
-  if (value > deadband || value < -deadband) {
-    return value;
+  if (deadband > 99) {
+    deadband = 99;
   }
 
-  return 0;
+  value = static_cast<int>(limitMagnitude(value, 100.0));
+  const int magnitude = value < 0 ? -value : value;
+  if (magnitude <= deadband) {
+    return 0;
+  }
+
+  const int scaled = ((magnitude - deadband) * 100) / (100 - deadband);
+  return value < 0 ? -scaled : scaled;
 }
 
 double limitMagnitude(double value, double maxMagnitude) {
@@ -31,22 +37,20 @@ double limitMagnitude(double value, double maxMagnitude) {
   return value;
 }
 
-void spinPercent(vex::motor* motor, double percent) {
+void spinRpm(vex::motor* motor, double rpm) {
   if (motor == nullptr) {
     return;
   }
 
-  percent = limitMagnitude(percent, 100.0);
-
-  if (std::fabs(percent) < 0.001) {
+  if (std::fabs(rpm) < 0.001) {
     motor->stop(vex::brakeType::brake);
     return;
   }
 
-  if (percent > 0.0) {
-    motor->spin(vex::directionType::fwd, percent, vex::percentUnits::pct);
+  if (rpm > 0.0) {
+    motor->spin(vex::directionType::fwd, rpm, vex::velocityUnits::rpm);
   } else {
-    motor->spin(vex::directionType::rev, -percent, vex::percentUnits::pct);
+    motor->spin(vex::directionType::rev, -rpm, vex::velocityUnits::rpm);
   }
 }
 

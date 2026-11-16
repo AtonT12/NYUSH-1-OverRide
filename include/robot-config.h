@@ -9,9 +9,9 @@ extern vex::controller Controller;
 // Central hardware bindings.
 //
 // Robot convention: the Claw side is the front; the Toggle side is the rear.
-// The confirmed Smart Ports and per-motor reverse flags are declared in
-// robot-config.cpp. Cartridges remain unconfirmed, so the modules use percent
-// power only and do not perform RPM or physical-distance conversions.
+// Smart Ports, internal cartridge settings and current per-motor reverse flags
+// are declared in robot-config.cpp. RPM commands target motor-shaft velocity;
+// external drivetrain ratios and physical-distance conversions are not used.
 namespace RobotHardware {
 
 struct MotorPair {
@@ -20,8 +20,8 @@ struct MotorPair {
 };
 
 // Four Omni X-drive wheel groups. Each wheel is driven by two motors through a
-// gear transmission. Direction is normalized per motor in robot-config.cpp so a
-// positive Drivetrain command drives its wheel group forward.
+// gear transmission. Software direction is normalized per motor in
+// robot-config.cpp; physical wheel response still needs validation.
 extern MotorPair driveFrontLeft;
 extern MotorPair driveFrontRight;
 extern MotorPair driveRearLeft;

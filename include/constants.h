@@ -8,12 +8,22 @@ namespace RobotConstants {
 // predictable operator response.
 constexpr int kControlLoopPeriodMs = 20;
 
-// Controller axis values within +/- this threshold are treated as zero.
+// Controller values within this threshold are zero; the rest is rescaled.
 constexpr int kJoystickDeadband = 5;
 
-// Safety limits applied by the hardware modules. These can be tuned after the
-// real mechanisms are characterized, but must remain conservative initially.
-constexpr double kDriveMaxPercent = 80.0;
-constexpr double kMechanismMaxPercent = 60.0;
+// Control speeds adapted from the Python reference in motor RPM.
+constexpr double kDriveTranslationRpm = 500.0;
+constexpr double kDriveTurnRpm = 200.0;
+constexpr double kPrimaryLiftRpm = 20.0;
+constexpr double kClawRpm = 50.0;
+constexpr double kToggleRpm = 25.0;
+
+// Retain the project's conservative output caps in RPM: 80% of 600 RPM for
+// the 6:1 drive cartridge and 60% of 200 RPM for the 18:1 mechanisms.
+constexpr double kDriveMaxCommandRpm = 480.0;
+constexpr double kMechanismMaxCommandRpm = 120.0;
+
+// Keep actuator commands locked until motor directions have been bench-tested.
+constexpr bool kDriverActuationEnabled = false;
 
 }  // namespace RobotConstants

@@ -4,8 +4,8 @@ namespace Toggle {
 
 bool isReady();
 
-// Positive power rotates the Toggle upward; negative power rotates it downward.
-void setPower(double percent);
+// Positive RPM rotates the Toggle upward; negative RPM rotates it downward.
+void setRpm(double rpm);
 void stop();
 
 }  // namespace Toggle
