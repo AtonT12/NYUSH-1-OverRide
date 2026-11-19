@@ -44,7 +44,6 @@ NYUSH-1/
 │   ├── recorder.h          # Records shaped commands to the SD card
 │   ├── auton-runner.h      # Replays a stored program
 │   ├── auton-programs.h    # Generated program table
-│   ├── diagnostics.h       # Per-motor jog tool
 │   ├── claw.h
 │   ├── toggle.h
 │   ├── vertical-lift.h
@@ -64,7 +63,6 @@ NYUSH-1/
 │   ├── command-apply.cpp
 │   ├── recorder.cpp
 │   ├── auton-runner.cpp
-│   ├── diagnostics.cpp
 │   ├── claw.cpp
 │   ├── toggle.cpp
 │   ├── vertical-lift.cpp
@@ -96,7 +94,6 @@ and tracks every header under `include/`.
 | `command-apply` | One dispatcher for teleop and playback, so the two cannot drift apart mechanism by mechanism |
 | `recorder` | Encodes shaped commands in place in an 18 KB buffer and writes `auton.bin` |
 | `auton-runner` | Replays a stored program on the tick grid with a 30 s budget |
-| `diagnostics` | Per-motor 60 rpm jog, used to fill in the direction sign-off sheet |
 | `claw`, `toggle`, `vertical-lift`, `secondary-lift` | Single-axis mechanism commands |
 
 `robot-config` depends on nothing but the SDK. The control core depends on
@@ -124,11 +121,10 @@ Set `RobotConstants::kBootRunMode` in `include/constants.h`.
 | L1 / L2 | fine lift up / down (ports 9, 10) |
 | R1 / R2 | claw close / open |
 | A or X | toggle |
-| **X + B** held at boot | per-motor diagnostic jog |
 | **Y + Down** held at boot | play the stored autonomous routine |
 
 Translation has no deadband; turn and coarse lift use 0.2. Translation and turn
-ramp at 10/s and 5/s; the coarse lift is unshaped.
+ramp at 4/s and 2/s; the coarse lift is unshaped.
 
 ## Competition behaviour
 
@@ -138,8 +134,6 @@ ramp at 10/s and 5/s; the coarse lift is unshaped.
 - Zeroes all eight drive motor encoders after confirming the drivetrain is fully
   bound. This is a position reset only and assumes the robot is at rest.
 - Shows project, hardware-binding and autonomous status on the Brain screen.
-- **X + B** held at power-on enters the per-motor diagnostic jog; the encoders
-  are zeroed again on exit.
 - **Y + Down** held at power-on plays the stored routine once, then returns.
 - No IMU, gyro or other sensor calibration is performed, because no such sensor
   is part of the current hardware specification.

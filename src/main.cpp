@@ -16,7 +16,6 @@
 #include "constants.h"
 #include "control/shaping.h"
 #include "control/timebase.h"
-#include "diagnostics.h"
 #include "drivetrain.h"
 #include "recorder.h"
 #include "robot-config.h"
@@ -62,7 +61,7 @@ void showRobotStatus() {
                      static_cast<int>(
                          control::autonDurationMs(AutonPrograms::kSelected)));
   Brain.Screen.setCursor(7, 1);
-  Brain.Screen.print("Boot: X+B diag | Y+Down auto");
+  Brain.Screen.print("Boot: Y+Down plays auton");
 }
 
 }  // namespace
@@ -85,15 +84,6 @@ void pre_auton(void) {
   Drivetrain::resetEncoders();
 
   showRobotStatus();
-
-  // Bench escape hatch: X + B held at power-on. Two buttons on purpose, so a
-  // stray press at a competition cannot strand the robot in diagnostics.
-  if (Controller.ButtonX.pressing() && Controller.ButtonB.pressing()) {
-    Diagnostics::run();
-    // Jogging moved the wheels, so the zero taken above is stale.
-    Drivetrain::resetEncoders();
-    showRobotStatus();
-  }
 
   // Bench trigger for the autonomous table: Y + Down at power-on. At a
   // competition this runs while the robot is field-disabled, so nothing moves;

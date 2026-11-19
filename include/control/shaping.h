@@ -11,8 +11,8 @@ struct ShapingCal {
   double translationDeadband;    // 0.0; the drive axes keep full resolution
   double turnDeadband;           // 0.20
   double liftCoarseDeadband;     // 0.20
-  double translationSlewPerSec;  // 10.0
-  double turnSlewPerSec;         // 5.0
+  double translationSlewPerSec;  // 4.0
+  double turnSlewPerSec;         // 2.0
   double liftCoarseSlewPerSec;   // 0.0, unshaped as in the reference
 };
 

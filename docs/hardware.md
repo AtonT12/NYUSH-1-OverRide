@@ -4,8 +4,9 @@ Everything in this file is **unverified** until a date is written in the
 "checked" column. `src/robot-config.cpp` encodes the assumptions below; if a
 row fails on the bench, fix that row's reverse flag and nothing else.
 
-Bench procedure: robot on blocks, `RunMode::Bench` (60 RPM cap), `Diagnostics`
-module stepping one motor at a time. Never sign a row from a full-speed run.
+Test procedure: mark the robot's front (claw side), run in `RunMode::Bench`
+(60 RPM cap) — on blocks first, then on the floor. Never sign a row from a
+full-speed run, and change one sign at a time.
 
 ## 1. Port map and direction
 
@@ -84,16 +85,13 @@ of 8 s aborts the attempt.
 7. Whether an IMU is installed, and on which port (reference uses 18).
 8. Battery model, count and main lead gauge.
 
-## 6. Entering bench mode
+## 6. Test modes
 
-1. **Per-motor jog tool** — hold **X + B** while powering the brain on. It works
-   in any run mode and drives one motor at 60 RPM, so it is the tool for filling
-   in section 1. Up/Down select, A/B jog, X stops, Y exits. Two buttons on
-   purpose: a stray press at a competition cannot strand the robot here.
-2. **Stick direction tests** — set `kBootRunMode` in `include/constants.h` to
+1. **Direction and mixer rows** — set `kBootRunMode` in `include/constants.h` to
    `RobotConstants::RunMode::Bench` and rebuild. The drivetrain cap drops to
-   `kBenchWheelCapRpm` (60 RPM); mechanisms are unaffected.
-3. **Competition** — `kBootRunMode` now ships as `RunMode::Field`. If a robot is
+   `kBenchWheelCapRpm` (60 RPM); mechanisms are unaffected, so hold the lift and
+   claw inputs briefly and watch one axis at a time.
+2. **Competition** — `kBootRunMode` now ships as `RunMode::Field`. If a robot is
    handed to a driver before sections 1 and 2 are signed, set it back to
    `RunMode::Bench`; `RunMode::Locked` keeps output at zero while still showing
    stick values.

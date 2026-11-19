@@ -18,11 +18,11 @@ constexpr double kTurnDeadband = 0.20;
 constexpr double kLiftCoarseDeadband = 0.20;
 
 // Slew rates in normalized units per second, not per frame: changing the loop
-// period must not change the feel. These are the reference program's per-frame
-// steps (0.1 translation, 0.05 turn) converted at its ~10 ms control period.
+// period must not change the feel. The reference steps 0.1 and 0.05 per frame at
+// Controller::UPDATE_INTERVAL = 25 ms, so the equivalent rates are 4/s and 2/s.
 // The reference does not shape the coarse lift, so it is left at 0 here.
-constexpr double kTranslationSlewPerSec = 10.0;
-constexpr double kTurnSlewPerSec = 5.0;
+constexpr double kTranslationSlewPerSec = 4.0;
+constexpr double kTurnSlewPerSec = 2.0;
 constexpr double kLiftCoarseSlewPerSec = 0.0;
 
 // Control speeds adapted from the Python reference in motor RPM.
