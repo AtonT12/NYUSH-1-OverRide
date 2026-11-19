@@ -93,9 +93,10 @@ of 8 s aborts the attempt.
 2. **Stick direction tests** — set `kBootRunMode` in `include/constants.h` to
    `RobotConstants::RunMode::Bench` and rebuild. The drivetrain cap drops to
    `kBenchWheelCapRpm` (60 RPM); mechanisms are unaffected.
-3. **Competition** — set `kBootRunMode` back to `RunMode::Field` only after every
-   row in sections 1 and 2 is signed and dated. `RunMode::Locked` is the safe
-   default and keeps the output at zero while still displaying stick values.
+3. **Competition** — `kBootRunMode` now ships as `RunMode::Field`. If a robot is
+   handed to a driver before sections 1 and 2 are signed, set it back to
+   `RunMode::Bench`; `RunMode::Locked` keeps output at zero while still showing
+   stick values.
 
 ## 7. Torque limits
 

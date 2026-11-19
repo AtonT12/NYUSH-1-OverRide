@@ -6,14 +6,14 @@ namespace control {
 
 // Calibration for the input shaping stage. Values live in normalized units so
 // they survive a change of the control-loop period: slew rates are per second,
-// not per frame.
+// not per frame. A slew rate of 0 disables the limiter on that channel.
 struct ShapingCal {
-  double translationDeadband;    // 0.0 by tournament-team request; see plan D2
+  double translationDeadband;    // 0.0; the drive axes keep full resolution
   double turnDeadband;           // 0.20
   double liftCoarseDeadband;     // 0.20
-  double translationSlewPerSec;  // 4.0
-  double turnSlewPerSec;         // 2.0
-  double liftCoarseSlewPerSec;   // 1.5
+  double translationSlewPerSec;  // 10.0
+  double turnSlewPerSec;         // 5.0
+  double liftCoarseSlewPerSec;   // 0.0, unshaped as in the reference
 };
 
 // Held between calls so the slew limiter has memory.

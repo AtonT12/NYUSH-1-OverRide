@@ -1,7 +1,5 @@
 #include "control/auton.h"
 
-#include <cstring>
-
 namespace control {
 namespace {
 
@@ -44,21 +42,11 @@ void writeU16(uint8_t* p, uint16_t value) {
   p[1] = static_cast<uint8_t>((value >> 8) & 0xFFu);
 }
 
-uint16_t readU16(const uint8_t* p) {
-  return static_cast<uint16_t>(static_cast<uint16_t>(p[0]) |
-                               (static_cast<uint16_t>(p[1]) << 8));
-}
-
 void writeU32(uint8_t* p, uint32_t value) {
   p[0] = static_cast<uint8_t>(value & 0xFFu);
   p[1] = static_cast<uint8_t>((value >> 8) & 0xFFu);
   p[2] = static_cast<uint8_t>((value >> 16) & 0xFFu);
   p[3] = static_cast<uint8_t>((value >> 24) & 0xFFu);
-}
-
-uint32_t readU32(const uint8_t* p) {
-  return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) |
-         (static_cast<uint32_t>(p[2]) << 16) | (static_cast<uint32_t>(p[3]) << 24);
 }
 
 const uint8_t kMagic[4] = {'O', 'V', 'R', 'R'};
@@ -196,71 +184,6 @@ bool autonWriteHeader(uint8_t* buffer, uint32_t capacity, uint32_t payloadBytes,
   writeU16(buffer + 8, count);
   writeU16(buffer + 10, 0);
   writeU32(buffer + 12, autonCrc32(buffer + kAutonHeaderBytes, payloadBytes));
-  return true;
-}
-
-uint32_t autonSerialize(const AutonProgram& program, uint8_t* buffer,
-                        uint32_t capacity) {
-  if (buffer == 0 || program.count > kAutonMaxFrames) {
-    return 0;
-  }
-  const uint32_t payload = static_cast<uint32_t>(program.count) * kAutonFrameBytes;
-  if (kAutonHeaderBytes + payload > capacity) {
-    return 0;
-  }
-  if (payload > 0 && program.frames == 0) {
-    return 0;
-  }
-  if (payload > 0) {
-    std::memcpy(buffer + kAutonHeaderBytes, program.frames, payload);
-  }
-  if (!autonWriteHeader(buffer, capacity, payload, program.count, program.periodMs)) {
-    return 0;
-  }
-  return kAutonHeaderBytes + payload;
-}
-
-bool autonDeserialize(const uint8_t* buffer, uint32_t length, AutonFrame* dest,
-                      uint16_t destCapacity, AutonProgram* out) {
-  if (out == 0) {
-    return false;
-  }
-  out->frames = 0;
-  out->count = 0;
-  out->periodMs = 20;
-
-  if (buffer == 0 || length < kAutonHeaderBytes) {
-    return false;
-  }
-  if (buffer[0] != kMagic[0] || buffer[1] != kMagic[1] || buffer[2] != kMagic[2] ||
-      buffer[3] != kMagic[3]) {
-    return false;
-  }
-  if (buffer[4] != kVersion) {
-    return false;
-  }
-
-  const uint16_t count = readU16(buffer + 8);
-  if (count > kAutonMaxFrames || count > destCapacity) {
-    return false;
-  }
-  const uint32_t payload = static_cast<uint32_t>(count) * kAutonFrameBytes;
-  if (length < kAutonHeaderBytes + payload) {
-    return false;
-  }
-  if (count > 0 && dest == 0) {
-    return false;
-  }
-  if (autonCrc32(buffer + kAutonHeaderBytes, payload) != readU32(buffer + 12)) {
-    return false;
-  }
-
-  if (payload > 0) {
-    std::memcpy(dest, buffer + kAutonHeaderBytes, payload);
-  }
-  out->frames = dest;
-  out->count = count;
-  out->periodMs = readU16(buffer + 6);
   return true;
 }
 

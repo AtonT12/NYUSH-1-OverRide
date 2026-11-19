@@ -74,20 +74,12 @@ void autonEncodeFrame(const UserCommand& command, uint16_t tMs, AutonFrame* fram
 // tools can verify a recording without reimplementing anything.
 uint32_t autonCrc32(const uint8_t* data, uint32_t length);
 
-// Serialises program into buffer. Returns the byte count written, or 0 when the
-// program does not fit or the arguments are invalid.
-uint32_t autonSerialize(const AutonProgram& program, uint8_t* buffer, uint32_t capacity);
-
 // Writes the 16-byte header for a payload that is already sitting at
-// buffer + kAutonHeaderBytes. Split out so the recorder can encode frames in
-// place without copying them through a second buffer.
+// buffer + kAutonHeaderBytes. The recorder encodes frames straight into the
+// file buffer, so there is no whole-program serialise step: the firmware never
+// reads a .bin back, it only writes one for the offline encoder.
 bool autonWriteHeader(uint8_t* buffer, uint32_t capacity, uint32_t payloadBytes,
                       uint16_t count, uint16_t periodMs);
-
-// Copies frames out of a serialised buffer into dest. Returns false on bad
-// magic, unknown version, truncated data or a CRC mismatch.
-bool autonDeserialize(const uint8_t* buffer, uint32_t length, AutonFrame* dest,
-                      uint16_t destCapacity, AutonProgram* out);
 
 // Last frame's timestamp, or 0 for an empty program.
 uint32_t autonDurationMs(const AutonProgram& program);

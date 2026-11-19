@@ -14,8 +14,8 @@ control::DriveCal driveCal() {
   cal.translationRpm = RobotConstants::kDriveTranslationRpm;
   cal.turnRpm = RobotConstants::kDriveTurnRpm;
   // Bench mode exists so a direction check can be read by eye. Capping here
-  // rather than in the caller keeps every consumer of driveX (teleop, playback,
-  // diagnostics) inside the same limit.
+  // rather than in the caller keeps every caller of apply() (teleop, playback)
+  // inside the same limit.
   cal.wheelCapRpm = RobotHardware::gRunMode == RobotConstants::RunMode::Bench
                         ? RobotConstants::kBenchWheelCapRpm
                         : RobotConstants::kDriveMaxCommandRpm;
@@ -38,31 +38,6 @@ void stopPair(const RobotHardware::MotorPair& pair) {
 
 bool isReady() {
   return RobotHardware::drivetrainReady();
-}
-
-void setWheelRpm(Wheel wheel, double rpm) {
-  if (!isReady()) {
-    // Returning alone would stop new commands but not the ones already issued,
-    // so the remaining groups would keep their last RPM. A missing motor can
-    // never be compensated by the other groups, so stop the whole drivetrain.
-    stop();
-    return;
-  }
-
-  switch (wheel) {
-    case Wheel::FrontLeft:
-      applyPair(RobotHardware::driveFrontLeft, rpm);
-      break;
-    case Wheel::FrontRight:
-      applyPair(RobotHardware::driveFrontRight, rpm);
-      break;
-    case Wheel::RearLeft:
-      applyPair(RobotHardware::driveRearLeft, rpm);
-      break;
-    case Wheel::RearRight:
-      applyPair(RobotHardware::driveRearRight, rpm);
-      break;
-  }
 }
 
 void setWheelRpms(double frontLeft, double frontRight, double rearLeft,
@@ -95,17 +70,6 @@ void apply(const control::UserCommand& command) {
   const control::WheelRpm wheels =
       control::clampWheels(control::mixXDrive(command, cal), cal.wheelCapRpm);
   setWheelRpms(wheels.fl, wheels.fr, wheels.rl, wheels.rr);
-}
-
-void driveX(double forwardAxis, double strafeAxis, double turnAxis) {
-  // Mixing and the proportional clamp live in the host-testable control core so
-  // the same maths can be verified without a robot. This function is only the
-  // adapter: controller units -> normalized command -> wheel RPM.
-  control::UserCommand command;
-  command.forward = forwardAxis / 100.0;
-  command.strafe = strafeAxis / 100.0;
-  command.turn = turnAxis / 100.0;
-  apply(command);
 }
 
 void stop() {

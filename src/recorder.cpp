@@ -66,10 +66,6 @@ uint32_t byteCount() {
   return static_cast<uint32_t>(gCount) * control::kAutonFrameBytes;
 }
 
-bool isFull() {
-  return gCount >= control::kAutonMaxFrames;
-}
-
 bool save(const char* path) {
   if (path == 0 || gCount == 0) {
     return false;

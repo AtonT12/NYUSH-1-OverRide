@@ -94,11 +94,28 @@ UserCommand shape(const UserCommand& raw, SlewState* state, const ShapingCal& ca
   }
 
   if (dtSec > 0.0) {
-    slewVector(&state->forward, &state->strafe, out.forward, out.strafe,
-               cal.translationSlewPerSec * dtSec);
-    state->turn = slewScalar(state->turn, out.turn, cal.turnSlewPerSec * dtSec);
-    state->liftCoarse =
-        slewScalar(state->liftCoarse, out.liftCoarse, cal.liftCoarseSlewPerSec * dtSec);
+    // A rate of zero means the channel is not shaped at all, which is how the
+    // reference treats the coarse lift: only translation and turn ramp.
+    if (cal.translationSlewPerSec > 0.0) {
+      slewVector(&state->forward, &state->strafe, out.forward, out.strafe,
+                 cal.translationSlewPerSec * dtSec);
+    } else {
+      state->forward = out.forward;
+      state->strafe = out.strafe;
+    }
+
+    if (cal.turnSlewPerSec > 0.0) {
+      state->turn = slewScalar(state->turn, out.turn, cal.turnSlewPerSec * dtSec);
+    } else {
+      state->turn = out.turn;
+    }
+
+    if (cal.liftCoarseSlewPerSec > 0.0) {
+      state->liftCoarse = slewScalar(state->liftCoarse, out.liftCoarse,
+                                     cal.liftCoarseSlewPerSec * dtSec);
+    } else {
+      state->liftCoarse = out.liftCoarse;
+    }
   }
 
   out.forward = state->forward;

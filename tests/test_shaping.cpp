@@ -3,7 +3,7 @@
 
 namespace {
 
-const control::ShapingCal kCal = {0.0, 0.20, 0.20, 4.0, 2.0, 1.5};
+const control::ShapingCal kCal = {0.0, 0.20, 0.20, 10.0, 5.0, 0.0};
 
 control::UserCommand command(double forward, double strafe, double turn,
                              double liftCoarse) {
@@ -95,7 +95,7 @@ TEST_CASE(shape_applies_turn_deadband) {
 
   const control::UserCommand moving =
       control::shape(command(0.0, 0.0, 0.60, 0.0), &state, kCal, 0.02);
-  CHECK_NEAR(moving.turn, 0.04, 1e-12);  // 0.5 rescaled, then one 2.0/s step
+  CHECK_NEAR(moving.turn, 0.10, 1e-12);  // 0.5 rescaled, then one 5.0/s step
 }
 
 TEST_CASE(shape_applies_lift_coarse_deadband) {
@@ -105,13 +105,22 @@ TEST_CASE(shape_applies_lift_coarse_deadband) {
   CHECK_NEAR(out.liftCoarse, 0.0, 1e-12);
 }
 
-TEST_CASE(shape_reaches_full_stick_in_thirteen_ticks) {
+TEST_CASE(shape_leaves_lift_coarse_unshaped) {
+  // A zero rate means "no limiter": the coarse lift follows the stick on the
+  // same tick, matching the reference.
+  control::SlewState state;
+  const control::UserCommand out =
+      control::shape(command(0.0, 0.0, 0.0, 1.0), &state, kCal, 0.02);
+  CHECK_NEAR(out.liftCoarse, 1.0, 1e-12);
+}
+
+TEST_CASE(shape_reaches_full_stick_in_five_ticks) {
   control::SlewState state;
   control::UserCommand out;
-  for (int i = 0; i < 12; ++i) {
+  for (int i = 0; i < 4; ++i) {
     out = control::shape(command(1.0, 0.0, 0.0, 0.0), &state, kCal, 0.02);
   }
-  CHECK_NEAR(out.forward, 0.96, 1e-12);
+  CHECK_NEAR(out.forward, 0.80, 1e-12);
   out = control::shape(command(1.0, 0.0, 0.0, 0.0), &state, kCal, 0.02);
   CHECK_NEAR(out.forward, 1.0, 1e-12);
 }

@@ -125,75 +125,22 @@ TEST_CASE(encode_frame_carries_values_and_flags) {
   CHECK_INT(frame.reserved, 0);
 }
 
-TEST_CASE(serialize_round_trips_through_deserialize) {
-  const control::AutonFrame frames[] = {
-      {0u, 0, 0, 0, 0, 0u, 0u},
-      {500u, 1000, -500, 250, 0, control::kFlagToggle, 0u},
-      {1000u, 0, 0, 0, 0, 0u, 0u},
-  };
-  const control::AutonProgram source(frames, 3u, 20u);
+TEST_CASE(header_writes_the_documented_layout) {
+  // The recorder encodes frames in place and then fills in the header, so this
+  // is the only place the on-disk layout is pinned down on the firmware side.
+  uint8_t buffer[control::kAutonHeaderBytes + 24] = {0};
+  CHECK_TRUE(control::autonWriteHeader(buffer, sizeof(buffer), 24u, 2u, 20u));
 
-  uint8_t buffer[128];
-  const uint32_t written = control::autonSerialize(source, buffer, sizeof(buffer));
-  CHECK_INT(written, control::kAutonHeaderBytes + 3u * control::kAutonFrameBytes);
-
-  control::AutonFrame decoded[8];
-  control::AutonProgram restored;
-  CHECK_TRUE(control::autonDeserialize(buffer, written, decoded, 8u, &restored));
-  CHECK_INT(restored.count, 3);
-  CHECK_INT(restored.periodMs, 20);
-  CHECK_INT(restored.frames[1].tMs, 500);
-  CHECK_INT(restored.frames[1].forwardPermille, 1000);
-  CHECK_INT(restored.frames[1].strafePermille, -500);
-  CHECK_INT(restored.frames[1].turnPermille, 250);
-  CHECK_TRUE((restored.frames[1].flags & control::kFlagToggle) != 0);
+  CHECK_INT(buffer[0], static_cast<unsigned>('O'));
+  CHECK_INT(buffer[1], static_cast<unsigned>('V'));
+  CHECK_INT(buffer[2], static_cast<unsigned>('R'));
+  CHECK_INT(buffer[3], static_cast<unsigned>('R'));
+  CHECK_INT(buffer[4], 1u);
+  CHECK_INT(buffer[6] | (buffer[7] << 8), 20u);
+  CHECK_INT(buffer[8] | (buffer[9] << 8), 2u);
 }
 
-TEST_CASE(serialize_refuses_a_buffer_that_is_too_small) {
-  const control::AutonFrame frames[] = {{0u, 0, 0, 0, 0, 0u, 0u}};
-  const control::AutonProgram source(frames, 1u, 20u);
+TEST_CASE(header_refuses_a_payload_that_does_not_fit) {
   uint8_t buffer[16];
-  CHECK_INT(control::autonSerialize(source, buffer, sizeof(buffer)), 0u);
-}
-
-TEST_CASE(deserialize_rejects_bad_magic) {
-  const control::AutonFrame frames[] = {{0u, 0, 0, 0, 0, 0u, 0u}};
-  const control::AutonProgram source(frames, 1u, 20u);
-  uint8_t buffer[64];
-  uint32_t written = control::autonSerialize(source, buffer, sizeof(buffer));
-  buffer[0] = 'X';
-
-  control::AutonFrame decoded[4];
-  control::AutonProgram restored;
-  CHECK_FALSE(control::autonDeserialize(buffer, written, decoded, 4u, &restored));
-  CHECK_INT(restored.count, 0);
-}
-
-TEST_CASE(deserialize_rejects_a_corrupted_payload) {
-  const control::AutonFrame frames[] = {
-      {0u, 0, 0, 0, 0, 0u, 0u},
-      {100u, 500, 0, 0, 0, 0u, 0u},
-  };
-  const control::AutonProgram source(frames, 2u, 20u);
-  uint8_t buffer[64];
-  const uint32_t written = control::autonSerialize(source, buffer, sizeof(buffer));
-  buffer[control::kAutonHeaderBytes + 2] ^= 0xFFu;  // flip a payload byte
-
-  control::AutonFrame decoded[4];
-  control::AutonProgram restored;
-  CHECK_FALSE(control::autonDeserialize(buffer, written, decoded, 4u, &restored));
-}
-
-TEST_CASE(deserialize_rejects_truncated_data) {
-  const control::AutonFrame frames[] = {
-      {0u, 0, 0, 0, 0, 0u, 0u},
-      {100u, 500, 0, 0, 0, 0u, 0u},
-  };
-  const control::AutonProgram source(frames, 2u, 20u);
-  uint8_t buffer[64];
-  const uint32_t written = control::autonSerialize(source, buffer, sizeof(buffer));
-
-  control::AutonFrame decoded[4];
-  control::AutonProgram restored;
-  CHECK_FALSE(control::autonDeserialize(buffer, written - 1u, decoded, 4u, &restored));
+  CHECK_FALSE(control::autonWriteHeader(buffer, sizeof(buffer), 24u, 2u, 20u));
 }
