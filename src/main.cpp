@@ -11,7 +11,7 @@
 
 #include "auton-programs.h"
 #include "auton-runner.h"
-#include "claw.h"
+#include "coarse-lift.h"
 #include "command-apply.h"
 #include "constants.h"
 #include "control/shaping.h"
@@ -19,8 +19,6 @@
 #include "drivetrain.h"
 #include "recorder.h"
 #include "robot-config.h"
-#include "toggle.h"
-#include "vertical-lift.h"
 
 using namespace vex;
 
@@ -30,7 +28,9 @@ competition Competition;
 namespace {
 
 void stopAllActuators() {
-  RobotHardware::stopAllMotors(vex::brakeType::brake);
+  // Drive groups brake; mechanisms stop with their default hold mode, so a
+  // lifted object does not drop when a period ends.
+  RobotHardware::stopAllMotors();
 }
 
 void showRobotStatus() {
@@ -106,6 +106,7 @@ void pre_auton(void) {
 
 void autonomous(void) {
   stopAllActuators();
+  CoarseLift::reset();
   AutonRunner::run(AutonPrograms::kSelected);
   stopAllActuators();
 }
@@ -118,6 +119,7 @@ void autonomous(void) {
 
 void usercontrol(void) {
   stopAllActuators();
+  CoarseLift::reset();
 
   control::ShapingCal shaping;
   shaping.translationDeadband = 0.0;  // team decision: full stick resolution

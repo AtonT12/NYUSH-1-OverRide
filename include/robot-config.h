@@ -38,17 +38,20 @@ extern MotorPair driveFrontRight;
 extern MotorPair driveRearLeft;
 extern MotorPair driveRearRight;
 
-// Primary vertical lift: two motors treated as one logical subsystem. Direction
-// is normalized so positive VerticalLift power raises the assembly.
+// Mechanism axes. A single-motor axis sets motorB to nullptr; that is a
+// complete axis, not a missing motor, which is why axisReady() accepts it.
+// primaryLift is the L1/L2 pair on ports 9 and 10, secondaryLift is the port-5
+// motor driven by Axis2.
 extern MotorPair primaryLift;
+extern MotorPair secondaryLift;
+extern MotorPair claw;
+extern MotorPair toggle;
 
-// Single-motor mechanisms.
-extern vex::motor* toggleMotor;
-extern vex::motor* secondaryLiftMotor;
-extern vex::motor* clawMotor;
+// Readiness. A drive group needs both motors; a mechanism axis needs motorA and
+// treats a null motorB as "this axis has one motor".
+bool pairReady(const MotorPair& pair);
+bool axisReady(const MotorPair& axis);
 
-// Readiness is true only when every motor needed by that subsystem is bound.
-// A partially bound pair is intentionally treated as not ready.
 bool drivetrainReady();
 bool toggleReady();
 bool primaryLiftReady();
@@ -56,8 +59,9 @@ bool secondaryLiftReady();
 bool clawReady();
 bool allReady();
 
-// Stops every bound motor, including any partially configured pair. Safe to
+// Stops every bound motor. Drive groups brake; mechanism axes stop with their
+// configured default mode (hold), so a lifted object does not drop. Safe to
 // call when no motor is bound.
-void stopAllMotors(vex::brakeType mode);
+void stopAllMotors();
 
 }  // namespace RobotHardware

@@ -41,15 +41,6 @@ double applyDeadbandUnit(double value, double deadband) {
   return v < 0.0 ? -scaled : scaled;
 }
 
-int applyDeadbandPercent(int value, int deadband) {
-  const double shaped =
-      applyDeadbandUnit(static_cast<double>(value) / 100.0,
-                        static_cast<double>(deadband) / 100.0);
-  const double scaled = shaped * 100.0;
-  // Half-away-from-zero rounding keeps left and right symmetric.
-  return static_cast<int>(scaled >= 0.0 ? scaled + 0.5 : scaled - 0.5);
-}
-
 double slewScalar(double current, double target, double maxDelta) {
   if (maxDelta <= 0.0) {
     return current;

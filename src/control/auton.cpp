@@ -1,5 +1,7 @@
 #include "control/auton.h"
 
+#include <cstring>
+
 namespace control {
 namespace {
 
@@ -148,6 +150,34 @@ void autonEncodeFrame(const UserCommand& command, uint16_t tMs, AutonFrame* fram
   }
   frame->flags = flags;
   frame->reserved = 0;
+}
+
+bool frameWriterAppend(FrameWriter* writer, const UserCommand& command,
+                       uint16_t tMs) {
+  if (writer == 0 || writer->base == 0) {
+    return false;
+  }
+  if (writer->count >= writer->capacity) {
+    return false;
+  }
+  if (writer->count > 0) {
+    // The wire format stores the timestamp little-endian; read it back with the
+    // same explicit byte order so this does not depend on struct layout.
+    const uint8_t* last = writer->base + (writer->count - 1) * kAutonFrameBytes;
+    const uint16_t previous =
+        static_cast<uint16_t>(static_cast<uint16_t>(last[0]) |
+                              (static_cast<uint16_t>(last[1]) << 8));
+    if (tMs < previous) {
+      return false;
+    }
+  }
+
+  AutonFrame frame;
+  autonEncodeFrame(command, tMs, &frame);
+  std::memcpy(writer->base + writer->count * kAutonFrameBytes, &frame,
+              kAutonFrameBytes);
+  ++writer->count;
+  return true;
 }
 
 uint32_t autonCrc32(const uint8_t* data, uint32_t length) {

@@ -40,28 +40,6 @@ TEST_CASE(deadband_of_zero_is_the_identity) {
   CHECK_NEAR(control::applyDeadbandUnit(-0.01, 0.0), -0.01, 1e-12);
 }
 
-TEST_CASE(percent_deadband_matches_the_unit_version) {
-  CHECK_INT(control::applyDeadbandPercent(0, 20), 0);
-  CHECK_INT(control::applyDeadbandPercent(19, 20), 0);
-  CHECK_INT(control::applyDeadbandPercent(20, 20), 0);
-  CHECK_INT(control::applyDeadbandPercent(60, 20), 50);
-  CHECK_INT(control::applyDeadbandPercent(-60, 20), -50);
-  CHECK_INT(control::applyDeadbandPercent(100, 20), 100);
-  CHECK_INT(control::applyDeadbandPercent(-100, 20), -100);
-}
-
-TEST_CASE(percent_deadband_rounds_instead_of_truncating) {
-  // Truncation would give 57 here and bias the low end of the stick.
-  CHECK_INT(control::applyDeadbandPercent(60, 5), 58);
-  CHECK_INT(control::applyDeadbandPercent(6, 5), 1);
-  CHECK_INT(control::applyDeadbandPercent(5, 5), 0);
-}
-
-TEST_CASE(percent_deadband_clamps_out_of_range_input) {
-  CHECK_INT(control::applyDeadbandPercent(199, 20), 100);
-  CHECK_INT(control::applyDeadbandPercent(-199, 20), -100);
-}
-
 TEST_CASE(slew_scalar_limits_the_step) {
   CHECK_NEAR(control::slewScalar(0.0, 1.0, 0.08), 0.08, 1e-12);
   CHECK_NEAR(control::slewScalar(0.0, -1.0, 0.08), -0.08, 1e-12);

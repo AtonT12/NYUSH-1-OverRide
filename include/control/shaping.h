@@ -30,11 +30,6 @@ struct SlewState {
 // first; the deadband is clamped to [0, 0.99] so the divisor never collapses.
 double applyDeadbandUnit(double value, double deadband);
 
-// Same shaping for callers that speak controller units (-100..100). Rounds
-// instead of truncating: truncation towards zero biases the two halves of the
-// stick by up to one unit each.
-int applyDeadbandPercent(int value, int deadband);
-
 // Moves current towards target by at most maxDelta.
 double slewScalar(double current, double target, double maxDelta);
 

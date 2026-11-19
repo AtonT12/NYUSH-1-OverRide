@@ -15,9 +15,14 @@ exactly the same motion as the one on the bench.
 4. Set `kBootRunMode` back to `RunMode::Field`.
 
 Recording is capped at 30 000 ms and 1500 frames, matching the VEX U autonomous
-period. Identical consecutive commands are collapsed into one frame with an
-extended timestamp, so holding a stick still for two seconds costs one frame,
-not a hundred.
+period: at one frame per 20 ms control tick, 1500 frames is exactly 30 s. Every
+tick is stored, including ticks where nothing changed.
+
+An earlier version merged identical consecutive commands by extending the
+previous frame's timestamp instead. That moved an input change to the *end* of
+its hold, so replay ramped into a continuous command over the whole hold and
+turned a one-second button press into a single 20 ms pulse. The frame writer now
+appends unconditionally; `tests/test_recorder.cpp` pins both cases.
 
 ## 2. Encode it
 
@@ -78,10 +83,13 @@ Flag bits: 0 lift-fine up, 1 lift-fine down, 2 fixture up, 3 fixture down,
 ## 5. Why the replay does not drift
 
 The runner samples on an absolute grid: tick `i` is always played at
-`start + i * period`, regardless of how long the previous tick took. A late loop
-skips frames instead of replaying them back-to-back, so a 30 s routine ends
-within one period of 30 s instead of accumulating the loop's own work over 1500
-iterations. `tests/test_timebase.cpp` pins this with an irregular 7 ms poll.
+`start + i * period`, regardless of how long the previous tick took. `period`
+comes from the tick grid's own fallback value, not from the raw header field, so
+a table with `period = 0` plays at 20 ms instead of freezing at `t = 0` forever.
+A late loop skips frames instead of replaying them back-to-back, so a 30 s
+routine ends within one period of 30 s instead of accumulating the loop's own
+work over 1500 iterations. `tests/test_timebase.cpp` pins this with an irregular
+7 ms poll.
 
 ## 6. What is deliberately not here
 

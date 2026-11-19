@@ -6,10 +6,6 @@
 // This is intentionally not a PID or motion-profile implementation.
 namespace MotorControl {
 
-// Applies a deadband and linearly rescales the remaining controller range to
-// -100..100. Controller input values are expected to be within -100..100.
-int applyDeadband(int value, int deadband);
-
 // Symmetric magnitude limit in the caller's units. The sign is preserved.
 double limitMagnitude(double value, double maxMagnitude);
 

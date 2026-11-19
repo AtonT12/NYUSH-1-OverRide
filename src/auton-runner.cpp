@@ -49,7 +49,11 @@ void run(const control::AutonProgram& program) {
     // not stretch the routine, and frames missed while the CPU was busy are
     // skipped rather than replayed back-to-back.
     control::tickAdvance(&grid, nowMs);
-    const uint32_t tMs = (grid.index - 1u) * static_cast<uint32_t>(program.periodMs);
+    // grid.periodMs, not program.periodMs: tickReset substitutes a fallback for
+    // a zero period, and dividing by the raw value would freeze tMs at zero and
+    // keep the loop below from ever reaching its exit condition.
+    const uint32_t tMs =
+        (grid.index - 1u) * static_cast<uint32_t>(grid.periodMs);
     if (tMs > limitMs) {
       break;
     }

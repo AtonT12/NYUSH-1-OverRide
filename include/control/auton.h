@@ -6,8 +6,9 @@
 
 namespace control {
 
-// Bit layout of AutonFrame::flags. Discrete channels are held between frames,
-// so a program only has to emit a flag on the frame where it changes.
+// Bit layout of AutonFrame::flags. Sampling holds a frame's flags across the
+// interval that starts at that frame, so the recorder writes them on every tick
+// while a hand-written table only needs them where they change.
 enum : uint8_t {
   kFlagLiftFinePositive = 1u << 0,
   kFlagLiftFineNegative = 1u << 1,
@@ -63,6 +64,27 @@ static const uint32_t kAutonMaxFileBytes =
 //   10..11 reserved
 //   12..15 CRC-32 of the frame bytes
 //   16..   frame bytes
+
+// Writes 12-byte frames back to back into a caller-owned buffer. The recorder
+// puts one over its SD buffer; the host tests put one over a local array, which
+// is what makes the "which frames are kept" decision testable without a robot.
+struct FrameWriter {
+  uint8_t* base;      // start of the frame area, i.e. after the 16-byte header
+  uint16_t capacity;  // frames
+  uint16_t count;
+
+  constexpr FrameWriter() : base(0), capacity(0), count(0) {}
+  FrameWriter(uint8_t* buffer, uint16_t frameCapacity)
+      : base(buffer), capacity(frameCapacity), count(0) {}
+};
+
+// Encodes `command` at `tMs` and appends it. One call is one frame: there is
+// deliberately no "same command, extend the previous timestamp" merge, because
+// that moves an input change to the end of its hold, and replay then ramps into
+// a change that should have been a step. Rejects a full writer and a timestamp
+// that goes backwards (the offline encoder refuses those).
+bool frameWriterAppend(FrameWriter* writer, const UserCommand& command,
+                       uint16_t tMs);
 
 // Rounds a normalized value to permille, clamping outside [-1, 1].
 int16_t autonToPermille(double unit);

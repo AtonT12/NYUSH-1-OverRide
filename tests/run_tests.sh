@@ -13,6 +13,7 @@ g++ -std=c++11 -O2 -Wall -Wextra -Werror -fno-exceptions -fno-rtti -Iinclude \
     tests/test_kinematics.cpp \
     tests/test_timebase.cpp \
     tests/test_auton.cpp \
+    tests/test_recorder.cpp \
     src/control/shaping.cpp \
     src/control/kinematics.cpp \
     src/control/timebase.cpp \

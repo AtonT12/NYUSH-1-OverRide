@@ -17,7 +17,9 @@ namespace {
 // directions still require a supervised physical check.
 //
 // Internal V5 gear cartridges follow the hardware configuration in the Python
-// reference: 6:1 for drive motors and 18:1 for mechanisms.
+// reference: 6:1 for drive motors, 36:1 for both lift axes, 18:1 for the claw
+// and toggle. The gearset argument converts RPM commands into motor duty, so a
+// wrong value silently halves or doubles the real output speed.
 
 // FL native positive = backward -> invert to make positive = forward.
 vex::motor driveFrontLeftAMotor(vex::PORT1, vex::ratio6_1, true);
@@ -37,13 +39,13 @@ vex::motor driveRearRightBMotor(vex::PORT19, vex::ratio6_1, false);
 
 // Lift A native positive = raise. Lift B native positive = lower, so invert B
 // to make positive command = raise for the complete subsystem.
-vex::motor primaryLiftAMotor(vex::PORT9, vex::ratio18_1, false);
-vex::motor primaryLiftBMotor(vex::PORT10, vex::ratio18_1, true);
+vex::motor primaryLiftAMotor(vex::PORT9, vex::ratio36_1, false);
+vex::motor primaryLiftBMotor(vex::PORT10, vex::ratio36_1, true);
 
 // Single-motor mechanisms. Their native positive directions already match the
 // module conventions: Toggle up, Secondary Lift raise, Claw close.
 vex::motor toggleMechanismMotor(vex::PORT13, vex::ratio18_1, false);
-vex::motor secondaryLiftMechanismMotor(vex::PORT5, vex::ratio18_1, false);
+vex::motor secondaryLiftMechanismMotor(vex::PORT5, vex::ratio36_1, false);
 vex::motor clawMechanismMotor(vex::PORT6, vex::ratio18_1, false);
 
 }  // namespace
@@ -58,9 +60,9 @@ MotorPair driveRearLeft = {&driveRearLeftAMotor, &driveRearLeftBMotor};
 MotorPair driveRearRight = {&driveRearRightAMotor, &driveRearRightBMotor};
 MotorPair primaryLift = {&primaryLiftAMotor, &primaryLiftBMotor};
 
-vex::motor* toggleMotor = &toggleMechanismMotor;
-vex::motor* secondaryLiftMotor = &secondaryLiftMechanismMotor;
-vex::motor* clawMotor = &clawMechanismMotor;
+MotorPair secondaryLift = {&secondaryLiftMechanismMotor, nullptr};
+MotorPair claw = {&clawMechanismMotor, nullptr};
+MotorPair toggle = {&toggleMechanismMotor, nullptr};
 
 namespace {
 
@@ -72,16 +74,32 @@ bool motorReady(vex::motor* motor) {
   return motor != nullptr && motor->installed();
 }
 
-bool pairReady(const MotorPair& pair) {
-  return motorReady(pair.motorA) && motorReady(pair.motorB);
-}
-
 void stopPair(const MotorPair& pair, vex::brakeType mode) {
   MotorControl::stopMotor(pair.motorA, mode);
   MotorControl::stopMotor(pair.motorB, mode);
 }
 
+void stopAxis(const MotorPair& axis) {
+  // No explicit mode: this is the default stopping mode, hold for mechanisms.
+  if (axis.motorA != nullptr) {
+    axis.motorA->stop();
+  }
+  if (axis.motorB != nullptr) {
+    axis.motorB->stop();
+  }
+}
+
 }  // namespace
+
+bool pairReady(const MotorPair& pair) {
+  return motorReady(pair.motorA) && motorReady(pair.motorB);
+}
+
+bool axisReady(const MotorPair& axis) {
+  // A null motorB marks a single-motor axis, not a missing one.
+  return motorReady(axis.motorA) &&
+         (axis.motorB == nullptr || motorReady(axis.motorB));
+}
 
 bool drivetrainReady() {
   return pairReady(driveFrontLeft) && pairReady(driveFrontRight) &&
@@ -89,19 +107,19 @@ bool drivetrainReady() {
 }
 
 bool toggleReady() {
-  return motorReady(toggleMotor);
+  return axisReady(toggle);
 }
 
 bool primaryLiftReady() {
-  return pairReady(primaryLift);
+  return axisReady(primaryLift);
 }
 
 bool secondaryLiftReady() {
-  return motorReady(secondaryLiftMotor);
+  return axisReady(secondaryLift);
 }
 
 bool clawReady() {
-  return motorReady(clawMotor);
+  return axisReady(claw);
 }
 
 bool allReady() {
@@ -109,21 +127,23 @@ bool allReady() {
          secondaryLiftReady() && clawReady();
 }
 
-void stopAllMotors(vex::brakeType mode) {
-  stopPair(driveFrontLeft, mode);
-  stopPair(driveFrontRight, mode);
-  stopPair(driveRearLeft, mode);
-  stopPair(driveRearRight, mode);
-  stopPair(primaryLift, mode);
+void stopAllMotors() {
+  stopPair(driveFrontLeft, vex::brakeType::brake);
+  stopPair(driveFrontRight, vex::brakeType::brake);
+  stopPair(driveRearLeft, vex::brakeType::brake);
+  stopPair(driveRearRight, vex::brakeType::brake);
 
-  MotorControl::stopMotor(toggleMotor, mode);
-  MotorControl::stopMotor(secondaryLiftMotor, mode);
-  MotorControl::stopMotor(clawMotor, mode);
+  stopAxis(primaryLift);
+  stopAxis(secondaryLift);
+  stopAxis(claw);
+  stopAxis(toggle);
 }
 
 void applyMotorConfiguration() {
   // Drive wheels brake on release; mechanisms hold, otherwise a lifted object
-  // drops the moment the operator lets go of the button.
+  // drops the moment the operator lets go of the button. There is deliberately
+  // no setMaxTorque call: the reference drives every motor at its own current
+  // limit, and a partial limit is felt as "the whole robot is weak".
   vex::motor* const driveMotors[] = {
       &driveFrontLeftAMotor,  &driveFrontLeftBMotor, &driveFrontRightAMotor,
       &driveFrontRightBMotor, &driveRearLeftAMotor,  &driveRearLeftBMotor,
@@ -137,16 +157,12 @@ void applyMotorConfiguration() {
   const unsigned driveCount = sizeof(driveMotors) / sizeof(driveMotors[0]);
   for (unsigned i = 0; i < driveCount; ++i) {
     driveMotors[i]->setStopping(vex::brakeType::brake);
-    driveMotors[i]->setMaxTorque(RobotConstants::kDriveTorquePercent,
-                                 vex::percentUnits::pct);
   }
 
   const unsigned mechanismCount =
       sizeof(mechanismMotors) / sizeof(mechanismMotors[0]);
   for (unsigned i = 0; i < mechanismCount; ++i) {
     mechanismMotors[i]->setStopping(vex::brakeType::hold);
-    mechanismMotors[i]->setMaxTorque(RobotConstants::kMechanismTorquePercent,
-                                     vex::percentUnits::pct);
   }
 }
 

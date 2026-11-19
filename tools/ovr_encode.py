@@ -38,6 +38,10 @@ def parse(data):
     period_ms, count, _reserved = struct.unpack_from("<HHH", data, 6)
     crc = struct.unpack_from("<I", data, 12)[0]
 
+    if period_ms == 0:
+        # The firmware falls back to 20 ms, so a zero here would make the table
+        # play at a period its own header denies. Refuse it at the source.
+        raise ValueError("control period is zero")
     if count > MAX_FRAMES:
         raise ValueError("frame count %d exceeds %d" % (count, MAX_FRAMES))
     payload = data[HEADER_BYTES:HEADER_BYTES + count * FRAME_BYTES]
