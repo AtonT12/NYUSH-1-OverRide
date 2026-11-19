@@ -1,25 +1,16 @@
 #include "motor-control.h"
 
+#include "control/shaping.h"
+
 #include <cmath>
 
 namespace MotorControl {
 
 int applyDeadband(int value, int deadband) {
-  if (deadband < 0) {
-    deadband = 0;
-  }
-  if (deadband > 99) {
-    deadband = 99;
-  }
-
-  value = static_cast<int>(limitMagnitude(value, 100.0));
-  const int magnitude = value < 0 ? -value : value;
-  if (magnitude <= deadband) {
-    return 0;
-  }
-
-  const int scaled = ((magnitude - deadband) * 100) / (100 - deadband);
-  return value < 0 ? -scaled : scaled;
+  // One definition of the deadband, shared with teleop and playback. The
+  // arithmetic lives in the control core so it can be covered by host tests;
+  // this wrapper exists only for callers that still work in controller units.
+  return control::applyDeadbandPercent(value, deadband);
 }
 
 double limitMagnitude(double value, double maxMagnitude) {

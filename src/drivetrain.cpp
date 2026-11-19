@@ -1,14 +1,26 @@
 #include "drivetrain.h"
 
 #include "constants.h"
+#include "control/kinematics.h"
 #include "motor-control.h"
 #include "robot-config.h"
-
-#include <cmath>
 
 namespace Drivetrain {
 
 namespace {
+
+control::DriveCal driveCal() {
+  control::DriveCal cal;
+  cal.translationRpm = RobotConstants::kDriveTranslationRpm;
+  cal.turnRpm = RobotConstants::kDriveTurnRpm;
+  // Bench mode exists so a direction check can be read by eye. Capping here
+  // rather than in the caller keeps every consumer of driveX (teleop, playback,
+  // diagnostics) inside the same limit.
+  cal.wheelCapRpm = RobotHardware::gRunMode == RobotConstants::RunMode::Bench
+                        ? RobotConstants::kBenchWheelCapRpm
+                        : RobotConstants::kDriveMaxCommandRpm;
+  return cal;
+}
 
 void applyPair(const RobotHardware::MotorPair& pair, double rpm) {
   const double limited = MotorControl::limitMagnitude(
@@ -78,39 +90,22 @@ void setWheelRpms(double frontLeft, double frontRight, double rearLeft,
 // If the robot later drives opposite to the sticks, fix the mixer signs here or
 // the per-motor reverse flags in robot-config.cpp, never both: an axis inversion
 // plus a motor inversion cancels out and looks correct on the bench.
+void apply(const control::UserCommand& command) {
+  const control::DriveCal cal = driveCal();
+  const control::WheelRpm wheels =
+      control::clampWheels(control::mixXDrive(command, cal), cal.wheelCapRpm);
+  setWheelRpms(wheels.fl, wheels.fr, wheels.rl, wheels.rr);
+}
+
 void driveX(double forwardAxis, double strafeAxis, double turnAxis) {
-  const double forward =
-      forwardAxis * RobotConstants::kDriveTranslationRpm / 100.0;
-  const double strafe =
-      strafeAxis * RobotConstants::kDriveTranslationRpm / 100.0;
-  const double turn = turnAxis * RobotConstants::kDriveTurnRpm / 100.0;
-  const double diagonal = std::sqrt(2.0);
-
-  double frontLeft = (strafe + forward) / diagonal + turn;
-  double frontRight = (-strafe + forward) / diagonal - turn;
-  double rearLeft = (-strafe + forward) / diagonal + turn;
-  double rearRight = (strafe + forward) / diagonal - turn;
-
-  double maxRpm = std::fabs(frontLeft);
-  if (std::fabs(frontRight) > maxRpm) {
-    maxRpm = std::fabs(frontRight);
-  }
-  if (std::fabs(rearLeft) > maxRpm) {
-    maxRpm = std::fabs(rearLeft);
-  }
-  if (std::fabs(rearRight) > maxRpm) {
-    maxRpm = std::fabs(rearRight);
-  }
-
-  if (maxRpm > RobotConstants::kDriveMaxCommandRpm) {
-    const double scale = RobotConstants::kDriveMaxCommandRpm / maxRpm;
-    frontLeft *= scale;
-    frontRight *= scale;
-    rearLeft *= scale;
-    rearRight *= scale;
-  }
-
-  setWheelRpms(frontLeft, frontRight, rearLeft, rearRight);
+  // Mixing and the proportional clamp live in the host-testable control core so
+  // the same maths can be verified without a robot. This function is only the
+  // adapter: controller units -> normalized command -> wheel RPM.
+  control::UserCommand command;
+  command.forward = forwardAxis / 100.0;
+  command.strafe = strafeAxis / 100.0;
+  command.turn = turnAxis / 100.0;
+  apply(command);
 }
 
 void stop() {

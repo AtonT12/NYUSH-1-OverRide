@@ -50,6 +50,8 @@ vex::motor clawMechanismMotor(vex::PORT6, vex::ratio18_1, false);
 
 namespace RobotHardware {
 
+RobotConstants::RunMode gRunMode = RobotConstants::kBootRunMode;
+
 MotorPair driveFrontLeft = {&driveFrontLeftAMotor, &driveFrontLeftBMotor};
 MotorPair driveFrontRight = {&driveFrontRightAMotor, &driveFrontRightBMotor};
 MotorPair driveRearLeft = {&driveRearLeftAMotor, &driveRearLeftBMotor};
@@ -117,6 +119,35 @@ void stopAllMotors(vex::brakeType mode) {
   MotorControl::stopMotor(toggleMotor, mode);
   MotorControl::stopMotor(secondaryLiftMotor, mode);
   MotorControl::stopMotor(clawMotor, mode);
+}
+
+void applyMotorConfiguration() {
+  // Drive wheels brake on release; mechanisms hold, otherwise a lifted object
+  // drops the moment the operator lets go of the button.
+  vex::motor* const driveMotors[] = {
+      &driveFrontLeftAMotor,  &driveFrontLeftBMotor, &driveFrontRightAMotor,
+      &driveFrontRightBMotor, &driveRearLeftAMotor,  &driveRearLeftBMotor,
+      &driveRearRightAMotor,  &driveRearRightBMotor,
+  };
+  vex::motor* const mechanismMotors[] = {
+      &primaryLiftAMotor, &primaryLiftBMotor, &toggleMechanismMotor,
+      &secondaryLiftMechanismMotor, &clawMechanismMotor,
+  };
+
+  const unsigned driveCount = sizeof(driveMotors) / sizeof(driveMotors[0]);
+  for (unsigned i = 0; i < driveCount; ++i) {
+    driveMotors[i]->setStopping(vex::brakeType::brake);
+    driveMotors[i]->setMaxTorque(RobotConstants::kDriveTorquePercent,
+                                 vex::percentUnits::pct);
+  }
+
+  const unsigned mechanismCount =
+      sizeof(mechanismMotors) / sizeof(mechanismMotors[0]);
+  for (unsigned i = 0; i < mechanismCount; ++i) {
+    mechanismMotors[i]->setStopping(vex::brakeType::hold);
+    mechanismMotors[i]->setMaxTorque(RobotConstants::kMechanismTorquePercent,
+                                     vex::percentUnits::pct);
+  }
 }
 
 }  // namespace RobotHardware

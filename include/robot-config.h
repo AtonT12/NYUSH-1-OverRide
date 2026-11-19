@@ -1,5 +1,6 @@
 #pragma once
 
+#include "constants.h"
 #include "vex.h"
 
 // Confirmed V5 devices that do not require a Smart Port assignment.
@@ -13,6 +14,16 @@ extern vex::controller Controller;
 // are declared in robot-config.cpp. RPM commands target motor-shaft velocity;
 // external drivetrain ratios and physical-distance conversions are not used.
 namespace RobotHardware {
+
+// Runtime operating mode. Defined in robot-config.cpp and deliberately not
+// constexpr: a compile-time constant would let the optimiser delete every
+// actuator call in the safe modes, which is exactly what happened when this was
+// a `constexpr bool`.
+extern RobotConstants::RunMode gRunMode;
+
+// Brake modes and per-motor torque limits. Call once at startup, before any
+// command can be issued.
+void applyMotorConfiguration();
 
 struct MotorPair {
   vex::motor* motorA;

@@ -15,7 +15,10 @@ SRC_C += $(wildcard src/*/*.c)
 OBJ = $(addprefix $(BUILD)/, $(addsuffix .o, $(basename $(SRC_C))) )
 
 # location of include files that c and cpp files depend on
-SRC_H  = $(wildcard include/*.h)
+# Both levels are listed on purpose: include/control/*.h would otherwise not
+# invalidate any object file, so editing the control core would silently link
+# against stale objects.
+SRC_H  = $(wildcard include/*.h) $(wildcard include/*/*.h)
 
 # additional dependancies
 SRC_A  = makefile
